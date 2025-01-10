@@ -30,13 +30,16 @@ import org.jgrapht.alg.connectivity.ConnectivityInspector;
 public class SalesmanAgent extends Agent {
     public static final String csvFilePath = "graph.csv";
 
-    int pos;
-    int numAgents;
-    int index;
-    Graph<Integer, DefaultWeightedEdge> graph;
-    int[] distances;
-    Set<Integer> visited;
+    public int pos;
+    public int numAgents;
+    public int index;
+    public Graph<Integer, DefaultWeightedEdge> graph;
+    public double[] distances;
+    public Set<Integer> visited;
     public AID[] sellerAgents;
+
+    public Map<Integer, List<Integer>> minRoutes;
+    public Set<Integer> frontierNodes;
 
 
 /*    public SalesmanAgent(int index, int[] agentsPos, Graph<Integer, DefaultWeightedEdge> graph){
@@ -69,8 +72,8 @@ public class SalesmanAgent extends Agent {
         //reads graph
         this.graph = this.readGraphFromCSV(this.csvFilePath);
         //initialize structures
-        this.distances = new int[graph.vertexSet().size()];
-        Arrays.fill(distances, Integer.MAX_VALUE);
+        this.distances = new double[graph.vertexSet().size()];
+        Arrays.fill(distances, Double.MAX_VALUE);
 
         this.visited = new HashSet<Integer>();
         //registers itself as agent publicly
@@ -111,6 +114,7 @@ public class SalesmanAgent extends Agent {
                         if (i-2==this.index) {
                             this.pos=n;
                             this.distances[this.pos]=0;
+                            this.visited.add(this.pos);
                         }
                     }
                     i+=1;
@@ -149,22 +153,29 @@ public class SalesmanAgent extends Agent {
     private class Strategy extends CyclicBehaviour {
         public void action() {
             SalesmanAgent myAgent = (SalesmanAgent) this.myAgent;
+            if (myAgent.visited.size()==myAgent.graph.vertexSet().size()){
+                System.out.println(getAID().getLocalName()+": all nodes have been visited");
+                doDelete();
+            }
             //calculate new distances to neighbors
             calculateDistances();
             //search for the nearest not-visited vertex
             int min = searchMin();
+            double myMin;
             if (min<0){
                 //if there are any not-visited neighbors
-                min = Integer.MAX_VALUE;
+                myMin = Integer.MAX_VALUE;
             }
-            int myMin = distances[min];
+            else {
+                myMin = distances[min];
+            }
 
             //send minimum distance to all agents
             for (int i=0; i<sellerAgents.length; i++){
                 if (i!=myAgent.index) {
                     ACLMessage proposition = new ACLMessage(ACLMessage.PROPOSE);
                     proposition.addReceiver(sellerAgents[i]);
-                    proposition.setContent(Integer.toString(myMin));
+                    proposition.setContent(Double.toString(myMin));
                     proposition.setConversationId(Integer.toString(i));
                     proposition.setReplyWith("cfp" + System.currentTimeMillis()); //unique value
                     this.myAgent.send(proposition);
@@ -173,14 +184,14 @@ public class SalesmanAgent extends Agent {
             }
 
             //wait for all proposals
-            int newMin = Integer.MAX_VALUE;
+            double newMin = Double.MAX_VALUE;
             int count=0;
             List<AID> minAgents = new ArrayList<AID>();
             while (count<sellerAgents.length-1){
                 MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
                 ACLMessage msg = this.myAgent.blockingReceive(mt);
                 String content = msg.getContent();
-                int proposedMin = Integer.parseInt(content);
+                double proposedMin = Double.parseDouble(content);
                 if (proposedMin<newMin) {
                     newMin=proposedMin;
                     minAgents.clear();
@@ -214,28 +225,29 @@ public class SalesmanAgent extends Agent {
                     }
                     count=0;
                     List<AID> minAgents2 = new ArrayList<AID>();
+                    int newMin2=Integer.MAX_VALUE;
                     while (count<minAgents.size()-1){
                         MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.PROPOSE);
                         ACLMessage msg = this.myAgent.blockingReceive(mt);
                         String content = msg.getContent();
                         int proposedRandom = Integer.parseInt(content);
-                        if (proposedRandom<randomValue) {
-                            newMin=proposedRandom;
+                        if (proposedRandom<newMin2) {
+                            newMin2=proposedRandom;
                             minAgents2.clear();
                             minAgents2.add(msg.getSender());
                         }
-                        else if(proposedRandom==newMin) {
+                        else if(proposedRandom==newMin2) {
                             minAgents2.add(msg.getSender());
                         }
                         count+=1;
                     }
                     minAgents = minAgents2;
-                    if (randomValue<newMin) {
+                    if (randomValue<newMin2) {
                         //I drew the smallest random number
                         end= true;
                         winner = true;
                     }
-                    else if (randomValue == newMin) {
+                    else if (randomValue == newMin2) {
                         //new round needed
                         end=false;
                     }
@@ -253,23 +265,114 @@ public class SalesmanAgent extends Agent {
 
             if (winner) {
                 //move
-                System.out.println(getAID().getLocalName()+": I won the round "+Integer.toString(myMin));
-
-                try {
-                    Thread.sleep(3000);
+                List<Integer> route = minRoutes.get(min);
+                int nextDestination;
+                for (int j = route.size()-1; j >=0; j--){
+                    nextDestination = route.get(j);
+                    if (nextDestination != myAgent.pos) {
+                        //search the weight of the edge that we are going to cross
+                        double weight=0;
+                        DefaultWeightedEdge edge = graph.getEdge(myAgent.pos, nextDestination);
+                        if (edge != null) {
+                            weight = graph.getEdgeWeight(edge);
+                        }
+                        else{
+                            System.out.println(getAID().getLocalName()+": error Edge does not exist");
+                        }
+                        //change routes and min distances of frontier nodes
+                        for (int z: frontierNodes) {
+                            List<Integer> l = minRoutes.get(z);
+                            if (l.size()==1) {
+                                //the only element in the route is my current position
+                                l.add(nextDestination);
+                                distances[z] += weight;
+                            }
+                            else {
+                                if (l.get(l.size()-2)==nextDestination) {
+                                    //we are following the route
+                                    l.remove(l.size()-1);
+                                    distances[z]-=weight;
+                                }
+                                else{
+                                    //we are not following the route
+                                    l.add(nextDestination);
+                                    distances[z]+=weight;
+                                }
+                            }
+                        }
+                    }
                 }
-                catch (Exception ex){
-                    System.out.println(ex);
+                //and our final destination, that does not belong to the route list
+                nextDestination = min;
+                if (nextDestination != myAgent.pos) {
+                    //search the weight of the edge that we are going to cross
+                    double weight=0;
+                    DefaultWeightedEdge edge = graph.getEdge(myAgent.pos, nextDestination);
+                    if (edge != null) {
+                        weight = graph.getEdgeWeight(edge);
+                    }
+                    else{
+                        System.out.println(getAID().getLocalName()+": error Edge does not exist");
+                    }
+                    //change routes and min distances of frontier nodes
+                    for (int z: frontierNodes) {
+                        List<Integer> l = minRoutes.get(z);
+                        if (l.size()==1) {
+                            //the only element in the route is my current position
+                            l.add(nextDestination);
+                            distances[z] += weight;
+                        }
+                        else {
+                            if (l.get(l.size()-2)==nextDestination) {
+                                //we are following the route
+                                l.remove(l.size()-1);
+                                distances[z]-=weight;
+                            }
+                            else{
+                                //we are not following the route
+                                l.add(nextDestination);
+                                distances[z]+=weight;
+                            }
+                        }
+                    }
+                }
+
+                System.out.println(getAID().getLocalName()+": I won the round "+Double.toString(myMin));
+                //updateDistances(min);
+
+                //change the status of variables
+                myAgent.distances[min]=0;
+                myAgent.pos=min;
+                myAgent.visited.add(min);
+                myAgent.frontierNodes.remove(min);
+                myAgent.minRoutes.remove(min);
+                //comunicate new position to the other agents
+                for (int i=0; i<sellerAgents.length; i++){
+                    if (i!=myAgent.index) {
+                        ACLMessage proposition = new ACLMessage(ACLMessage.INFORM);
+                        proposition.addReceiver(sellerAgents[i]);
+                        proposition.setContent(Integer.toString(myAgent.pos));
+                        proposition.setConversationId(Integer.toString(i));
+                        proposition.setReplyWith("cfp" + System.currentTimeMillis()); //unique value
+                        this.myAgent.send(proposition);
+                        System.out.println(getAID().getLocalName()+": message sent to "+sellerAgents[i].getLocalName());
+                    }
                 }
             }
             else {
-                System.out.println(getAID().getLocalName()+": I lost the round "+Integer.toString(myMin));
-                try {
-                    Thread.sleep(1000);
-                }
-                catch (Exception ex){
-                    System.out.println(ex);
-                }
+                //wait for the result of moving
+                System.out.println(getAID().getLocalName()+": I lost the round "+Double.toString(myMin));
+
+                //wait to receive the newPosition
+                MessageTemplate mt = MessageTemplate.MatchPerformative(ACLMessage.INFORM);
+                ACLMessage msg = this.myAgent.blockingReceive(mt);
+                String content = msg.getContent();
+                int newPosition = Integer.parseInt(content);
+                //save changes
+                myAgent.visited.add(newPosition);
+                myAgent.frontierNodes.remove(newPosition);
+                myAgent.minRoutes.remove(min);
+
             }
 
 
@@ -277,22 +380,48 @@ public class SalesmanAgent extends Agent {
 
     }
 
+    //not used for now
+    public void updateDistances(int min) {
+        for (DefaultWeightedEdge edge : graph.edgesOf(this.pos)){
+            if (graph.getEdgeTarget(edge)!=this.pos) {
+                if (distances[graph.getEdgeTarget(edge)]==graph.getEdgeWeight(edge)){
+                    distances[graph.getEdgeTarget(edge)]+=distances[min];
+                }
+            }
+        }
+    }
+
     public void calculateDistances() {
         for (DefaultWeightedEdge edge : graph.edgesOf(this.pos)){
-            if (graph.getEdgeWeight(edge) <distances[graph.getEdgeTarget(edge)]) {
-                distances[graph.getEdgeTarget(edge)] = (int) graph.getEdgeWeight(edge);
-                //when the agent moves we will have to update the distances to their former neighbors by adding the edge that it has justs crossed
+            int end;
+            if (graph.getEdgeTarget(edge) != this.pos) {
+                end = graph.getEdgeTarget(edge);
             }
-            if (graph.getEdgeWeight(edge) <distances[graph.getEdgeSource(edge)]) {
-                distances[graph.getEdgeSource(edge)] = (int) graph.getEdgeWeight(edge);
+            else {
+                end = graph.getEdgeSource(edge);
+            }
+
+            if (distances[end]==Double.MAX_VALUE){
+                frontierNodes.add(end);
+                List <Integer> l = new ArrayList<Integer>();
+                l.add(this.pos);
+                minRoutes.put(end, l);
+                distances[end] = graph.getEdgeWeight(edge);
+            }
+            else if (graph.getEdgeWeight(edge) <distances[end]) {
+                List <Integer> l = new ArrayList<Integer>();
+                l.add(this.pos);
+                minRoutes.put(end, l);
+                distances[end] = graph.getEdgeWeight(edge);
+                //when the agent moves we will have to update the distances to their former neighbors by adding the edge that it has justs crossed
             }
         }
     }
 
     public int searchMin(){
-        int min = Integer.MAX_VALUE;
+        double min = Integer.MAX_VALUE;
         int j = -1;
-        for (int i=0; i<this.distances.length; i++) {
+        for (int i : frontierNodes) {
             if ((!this.visited.contains(i)) && this.distances[i]<min) {
                 j = i;
                 min = this.distances[i];
