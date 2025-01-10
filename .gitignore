@@ -1,6 +1,9 @@
 # Ignore everything
 *
 
-# Except the src folder
-!src/*
+# Except the src folder and its contents
+!src/
+!src/**
+
+# Keep unignoring .gitignore itself
 !.gitignore
