@@ -76,6 +76,8 @@ public class SalesmanAgent extends Agent {
         Arrays.fill(distances, Double.MAX_VALUE);
 
         this.visited = new HashSet<Integer>();
+        this.frontierNodes = new HashSet<Integer>();
+        this.minRoutes = new HashMap<Integer, List<Integer>>();
         //registers itself as agent publicly
         DFAgentDescription dfd = new DFAgentDescription();
         dfd.setName(getAID());
@@ -264,15 +266,20 @@ public class SalesmanAgent extends Agent {
             }
 
             if (winner) {
+                System.out.println(getAID().getLocalName()+": I won the round "+Double.toString(myMin));
+
                 //move
                 List<Integer> route = minRoutes.get(min);
+                myAgent.frontierNodes.remove(min);
                 int nextDestination;
+                int previousDestination = myAgent.pos;
                 for (int j = route.size()-1; j >=0; j--){
                     nextDestination = route.get(j);
                     if (nextDestination != myAgent.pos) {
                         //search the weight of the edge that we are going to cross
+                        System.out.println(getAID().getLocalName()+": Im moving from "+Integer.toString(previousDestination)+" to "+Integer.toString(nextDestination));
                         double weight=0;
-                        DefaultWeightedEdge edge = graph.getEdge(myAgent.pos, nextDestination);
+                        DefaultWeightedEdge edge = graph.getEdge(previousDestination, nextDestination);
                         if (edge != null) {
                             weight = graph.getEdgeWeight(edge);
                         }
@@ -284,6 +291,7 @@ public class SalesmanAgent extends Agent {
                             List<Integer> l = minRoutes.get(z);
                             if (l.size()==1) {
                                 //the only element in the route is my current position
+                                //we are passing through a node in connection with a frotierNode which is not our finalDestination
                                 l.add(nextDestination);
                                 distances[z] += weight;
                             }
@@ -301,6 +309,7 @@ public class SalesmanAgent extends Agent {
                             }
                         }
                     }
+                    previousDestination = nextDestination;
                 }
                 //and our final destination, that does not belong to the route list
                 nextDestination = min;
@@ -337,7 +346,6 @@ public class SalesmanAgent extends Agent {
                     }
                 }
 
-                System.out.println(getAID().getLocalName()+": I won the round "+Double.toString(myMin));
                 //updateDistances(min);
 
                 //change the status of variables
