@@ -2,5 +2,5 @@
 *
 
 # Except the src folder
-!src/
+!src/*
 !.gitignore
