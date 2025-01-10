@@ -28,6 +28,7 @@ public class Main {
     int maxWeight = 10; // Maximum weight
 
     public static final int numAgents=3;
+    //a
 
     // Create and initialize the graph
     Graph<Integer, DefaultWeightedEdge> graph = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
