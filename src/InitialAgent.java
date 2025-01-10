@@ -1,3 +1,6 @@
+
+package jadelab2;
+
 import jade.core.Agent;
 import jade.domain.DFService;
 import jade.domain.FIPAException;
@@ -14,6 +17,11 @@ import jade.domain.FIPAAgentManagement.ServiceDescription;
 
 import org.jgrapht.Graph;
 import org.jgrapht.graph.DefaultWeightedEdge;
+import org.jgrapht.Graph;
+import org.jgrapht.ext.JGraphXAdapter;
+import org.jgrapht.graph.DefaultWeightedEdge;
+import org.jgrapht.graph.SimpleWeightedGraph;
+import org.jgrapht.alg.connectivity.ConnectivityInspector;
 
 import java.io.BufferedReader;
 import java.io.FileReader;
@@ -34,6 +42,14 @@ public class InitialAgent extends Agent {
 
 
     protected void setup() {
+
+        //we need to wait a bit for the SalesmanAgents to register themselves on DF
+        try {
+            Thread.sleep(1000);
+        }
+        catch (Exception ex){
+            System.out.println(ex);
+        }
 
         //searches for all the SalesmanAgents and saves its names
         DFAgentDescription template = new DFAgentDescription();
@@ -79,21 +95,15 @@ public class InitialAgent extends Agent {
             informPos.setConversationId(Integer.toString(i));
             informPos.setReplyWith("cfp"+System.currentTimeMillis()); //unique value
             this.send(informPos);
+            System.out.println(getAID().getLocalName()+" message sent");
         }
 
-
+    System.out.println(getAID().getLocalName()+": end of initialization");
 
     }
 
     protected void takeDown() {
-        try {
-            DFService.deregister(this);
-        }
-        catch (FIPAException fe) {
-            fe.printStackTrace();
-        }
-        //myGui.dispose();
-        System.out.println("Seller agent " + getAID().getName() + " terminated.");
+        System.out.println(getAID().getLocalName()+": Seller agent " + getAID().getName() + " terminated.");
     }
 
 
@@ -111,11 +121,8 @@ public class InitialAgent extends Agent {
                 graph.addVertex(target);
                 DefaultWeightedEdge edge = graph.addEdge(source, target);
                 graph.setEdgeWeight(edge, weight);
-
-                DefaultWeightedEdge edge2 = graph.addEdge(target, source);
-                graph.setEdgeWeight(edge2, weight);
             }
-            System.out.println("Graph loaded from CSV.");
+            System.out.println(getAID().getLocalName()+": Graph loaded from CSV.");
         } catch (IOException e) {
             e.printStackTrace();
         }

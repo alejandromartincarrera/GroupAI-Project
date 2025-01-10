@@ -1,6 +1,9 @@
+
+package jadelab2;
+
 import com.mxgraph.layout.mxCircleLayout;
 import com.mxgraph.swing.mxGraphComponent;
-import org.jgrapht.Graphj;
+import org.jgrapht.Graph;
 import org.jgrapht.ext.JGraphXAdapter;
 import org.jgrapht.graph.DefaultWeightedEdge;
 import org.jgrapht.graph.SimpleWeightedGraph;
@@ -54,7 +57,7 @@ public class Main {
             int[] agentsPos = new int[numAgents];
             main.asignRandomPos(agentsPos);
             SalesmanAgent[] agents = new SalesmanAgent[numAgents];
-            main.createAgents(agents, agentsPos, graph);
+            //main.createAgents(agents, agentsPos, this.graph);
         });
     }
 
@@ -68,7 +71,7 @@ public class Main {
 
     public void createAgents(SalesmanAgent[] agents, int[] agentsPos, Graph<Integer, DefaultWeightedEdge> graph){
         for (int i=0; i<numAgents; i++) {
-            agents[i]= new SalesmanAgent(i, agentsPos, graph);
+            agents[i]= new SalesmanAgent();
         }
     }
 
