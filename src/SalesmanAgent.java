@@ -39,6 +39,8 @@ public class SalesmanAgent extends Agent {
     public Set<Integer> visited;
     public AID[] sellerAgents;
 
+    public AID initialAgent;
+
     public Map<Integer, List<Integer>> minRoutes;
     public Set<Integer> frontierNodes;
 
@@ -111,6 +113,7 @@ public class SalesmanAgent extends Agent {
 
         if (msg != null) {
             String content = msg.getContent();
+            this.initialAgent = msg.getSender();
             System.out.println(getAID().getLocalName()+": message received: "+content);
 
             //parses the ints of content. It will have this format = "number of agents, index of this agent, pos agent 1, pos agent 2, ...., pos agent n"
@@ -173,6 +176,12 @@ public class SalesmanAgent extends Agent {
 
     private class Strategy extends CyclicBehaviour {
         public void action() {
+            try {
+                Thread.sleep(2000);
+            }
+            catch (Exception ex){
+                System.out.println(ex);
+            }
             try {
                 //System.out.println(getAID().getLocalName() + ": actionnnnn");
                 SalesmanAgent myAgent = (SalesmanAgent) this.myAgent;
@@ -404,6 +413,15 @@ public class SalesmanAgent extends Agent {
                             System.out.println(getAID().getLocalName() + ": message sent to " + sellerAgents[i].getLocalName());
                         }
                     }
+
+                    //communicate to InitialAgent
+                    ACLMessage proposition = new ACLMessage(ACLMessage.INFORM);
+                    proposition.addReceiver(myAgent.initialAgent);
+                    proposition.setContent(Integer.toString(myAgent.pos));
+                    proposition.setReplyWith("cfp" + System.currentTimeMillis()); //unique value
+                    this.myAgent.send(proposition);
+                    System.out.println(getAID().getLocalName() + ": message sent to " + myAgent.initialAgent.getLocalName());
+
                 } else {
                     //wait for the result of moving
                     System.out.println(getAID().getLocalName() + ": I lost the round " + Double.toString(myMin));
