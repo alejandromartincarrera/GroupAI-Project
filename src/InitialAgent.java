@@ -99,7 +99,7 @@ public class InitialAgent extends Agent {
         }
 
     System.out.println(getAID().getLocalName()+": end of initialization");
-
+    doDelete();
     }
 
     protected void takeDown() {
