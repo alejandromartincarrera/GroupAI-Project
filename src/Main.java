@@ -130,7 +130,9 @@ public class Main {
     }
 
 
-    public void createRandomGraph() {
+    public Graph<Integer, DefaultWeightedEdge> createRandomGraph() {
+        Graph<Integer, DefaultWeightedEdge> graph = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
+
         // Add nodes
         for (int i = 0; i < numNodes; i++) {
             graph.addVertex(i);
@@ -172,6 +174,7 @@ public class Main {
                 }
             }
         }
+        return graph;
     }
 
     // Step 2: Ensure all nodes are connected (check for unconnected components and add edges between them)

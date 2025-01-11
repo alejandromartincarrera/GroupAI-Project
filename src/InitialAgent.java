@@ -85,6 +85,7 @@ public class InitialAgent extends Agent {
 
         //loads graph
         this.graph = readGraphFromCSV(this.csvFilePath);
+        //this.graph = createRandomGraph(10, 15, 1, 10);
 
         GraphVisualizerFrame frame = new GraphVisualizerFrame(graph);
         visualizeGraph(frame);  // Visualize the graph
@@ -202,6 +203,7 @@ public class InitialAgent extends Agent {
 
             Map<String, Object> vertexStyle = graphAdapter.getStylesheet().getDefaultVertexStyle();
             vertexStyle.put("shape", "rectangle");
+
             vertexStyle.put("fillColor", "#FFFFFF");
             vertexStyle.put("strokeColor", "#000000");
             vertexStyle.put("strokeWidth", 1.0);
@@ -300,5 +302,53 @@ public class InitialAgent extends Agent {
         }
 
         return colorList;
+    }
+
+    public Graph<Integer, DefaultWeightedEdge> createRandomGraph(int numNodes, int numEdges, int minWeight, int maxWeight) {
+        Graph<Integer, DefaultWeightedEdge> graph = new SimpleWeightedGraph<>(DefaultWeightedEdge.class);
+
+        // Add nodes
+        for (int i = 0; i < numNodes; i++) {
+            graph.addVertex(i);
+        }
+
+        // Randomly connect all nodes to form a graph
+        Random random = new Random();
+        for (int i = 0; i < numNodes; i++) {
+            // Pick a random target node from [0, numNodes - 1]
+            int target = random.nextInt(numNodes);
+            // Avoid self-loops
+            while (target == i) {
+                target = random.nextInt(numNodes);
+            }
+            DefaultWeightedEdge edge = graph.addEdge(i, target);
+            //this is unidirectional , you can go from i to target but not from target to i
+            if (edge != null) {
+                double weight = minWeight + (maxWeight - minWeight) * random.nextDouble();
+                double roundedWeight = Math.round(weight * 100.0) / 100.0; // Round to 2 decimal places
+                graph.setEdgeWeight(edge, roundedWeight);
+
+            }
+        }
+
+
+        // Add additional edges to meet the desired number of edges
+        int additionalEdges = numEdges - (numNodes - 1); // Remaining edges to add
+        while (additionalEdges > 0) {
+            int source = random.nextInt(numNodes);
+            int target = random.nextInt(numNodes);
+
+            // Avoid self-loops and duplicate edges
+            if (source != target && !graph.containsEdge(source, target)) {
+                DefaultWeightedEdge edge = graph.addEdge(source, target);
+                if (edge != null) {
+                    double weight = minWeight + (maxWeight - minWeight) * random.nextDouble();
+                    double roundedWeight = Math.round(weight * 100.0) / 100.0; // Round to 2 decimal places
+                    graph.setEdgeWeight(edge, roundedWeight);
+                    additionalEdges--;
+                }
+            }
+        }
+        return graph;
     }
 }
